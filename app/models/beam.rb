@@ -48,7 +48,7 @@ class Beam < ApplicationRecord
   
   # For backward compatibility with old views
   def image_url
-    image_key
+    self[:image_url].presence || image_key
   end
   
   def soft_delete

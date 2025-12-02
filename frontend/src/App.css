@@ -1,0 +1,170 @@
+.top-nav {
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid #e9ecef;
+  padding: 10px 0;
+}
+
+.brand-logo {
+  height: 40px;
+}
+
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+}
+
+.section-title {
+  text-align: center;
+  font-weight: 700;
+  font-size: 28px;
+  margin-bottom: 24px;
+}
+
+.search-bar {
+  max-width: 520px;
+  margin: 0 auto 24px;
+}
+
+.search-bar .form-control {
+  border-radius: 10px;
+  height: 46px;
+}
+
+.search-bar .btn-search {
+  border-radius: 10px;
+  padding: 10px 18px;
+  background: #f5b536;
+  border: none;
+  font-weight: 600;
+  color: #1f1f1f;
+}
+
+.beam-card {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f8f8f8;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
+  border: 1px solid #f0f0f0;
+}
+
+.beam-card .beam-image {
+  width: 120px;
+  height: 140px;
+  border-radius: 10px;
+  background: #e9ecef;
+  overflow: hidden;
+}
+
+.beam-card .beam-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.beam-card h5 {
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.beam-meta {
+  font-size: 13px;
+  color: #4f5864;
+  line-height: 1.6;
+}
+
+.beam-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.beam-actions.single {
+  justify-content: flex-end;
+}
+
+.beam-btn {
+  min-width: 160px;
+  padding: 12px 18px;
+  font-weight: 700;
+}
+
+.btn-outline-light {
+  border: 1px solid #e1e1e1;
+  background: #ffffff;
+  color: #1f1f1f;
+  font-weight: 600;
+}
+
+.btn-accent {
+  background: #f5b536;
+  color: #1f1f1f;
+  font-weight: 700;
+  border: none;
+}
+
+.btn-accent:hover {
+  background: #e5a32f;
+  color: #1f1f1f;
+}
+
+.detail-card {
+  max-width: 760px;
+  margin: 0 auto;
+  border-radius: 16px;
+  background: #f8f8f8;
+  padding: 28px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.06);
+}
+
+.detail-image {
+  width: 220px;
+  height: 260px;
+  border-radius: 12px;
+  background: #e9ecef;
+  margin: 0 auto 24px;
+  overflow: hidden;
+}
+
+.detail-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.detail-label {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.detail-value {
+  font-weight: 700;
+  color: #1f1f1f;
+}
+
+.detail-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.breadcrumbs-bar {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.object-fit-cover {
+  object-fit: cover;
+}

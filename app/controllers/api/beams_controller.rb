@@ -14,8 +14,8 @@ module Api
       
       # Safely handle pagination
       page = [params[:page].to_i, 1].max
-      per_page = [[params[:per_page].to_i, 1].max, 100].min
-      per_page = 20 if per_page.zero?
+      per_page_param = params[:per_page].to_i
+      per_page = per_page_param.positive? ? [per_page_param, 100].min : 20
       
       # Paginate the query
       paginated_beams = beams.page(page).per(per_page)
