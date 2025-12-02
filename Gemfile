@@ -44,7 +44,7 @@ gem "kamal", require: false
 gem "thruster", require: false
 
 # AWS SDK for S3 (used for MinIO integration)
-gem 'aws-sdk-s3', '~> 1.0', require: false
+gem 'aws-sdk-s3', '~> 1.205', require: false
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
