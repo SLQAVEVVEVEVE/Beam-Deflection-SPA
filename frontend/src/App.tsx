@@ -1,5 +1,5 @@
 ﻿import { Container } from 'react-bootstrap'
-import { Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import './App.css'
 import { Breadcrumbs } from './components/Breadcrumbs'
 import { Navigation } from './components/Navigation'
@@ -18,6 +18,7 @@ function AppShell() {
         {showBreadcrumbs && <Breadcrumbs />}
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/index.html" element={<Navigate to="/" replace />} />
           <Route path="/beams" element={<BeamsListPage />} />
           <Route path="/beams/:id" element={<BeamDetailPage />} />
           <Route path="*" element={<div>Страница не найдена</div>} />

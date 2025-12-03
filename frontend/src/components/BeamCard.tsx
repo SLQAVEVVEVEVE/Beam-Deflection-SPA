@@ -1,4 +1,4 @@
-﻿import { Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { displayImage, materialLabel } from '../services/api'
 import type { Beam } from '../types'
 

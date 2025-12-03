@@ -1,12 +1,14 @@
-﻿import { mockBeams } from '../data/mockBeams'
+import { mockBeams } from '../data/mockBeams'
 import type { Beam, BeamFilters, BeamsResponse } from '../types'
 
-const API_BASE = '/api'
+const isTauri = typeof window !== 'undefined' && '__TAURI_IPC__' in window
+const apiBaseFromEnv = (isTauri ? import.meta.env.VITE_TAURI_API_BASE : import.meta.env.VITE_API_BASE) || '/api'
+const API_BASE = apiBaseFromEnv.replace(/\/$/, '')
 
 const DEFAULT_PLACEHOLDER =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360" viewBox="0 0 600 360" preserveAspectRatio="xMidYMid meet"><rect width="600" height="360" fill="%23f4f6f8"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23808b96" font-family="Arial" font-size="20">No image</text></svg>'
 
-const MINIO_PUBLIC = import.meta.env.VITE_MINIO_PUBLIC || 'http://localhost:9000/beam-deflection/'
+const MINIO_PUBLIC = (import.meta.env.VITE_MINIO_PUBLIC || 'http://localhost:9000/beam-deflection/').replace(/\/?$/, '/')
 
 const MATERIAL_LABELS: Record<string, string> = {
   wooden: 'Деревянная',
@@ -26,8 +28,10 @@ export function displayImage(beam?: Beam | null) {
 }
 
 export function materialLabel(material?: string) {
-  return MATERIAL_LABELS[material ?? ''] || material || '—'
+  return MATERIAL_LABELS[material ?? ''] || material || '-'
 }
+
+const buildUrl = (path: string) => `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`
 
 function buildQuery(filters: BeamFilters) {
   const params = new URLSearchParams()
@@ -52,45 +56,61 @@ function withinRange(value: number, min?: number, max?: number) {
   return true
 }
 
+function matchFilters(beam: Beam, filters: BeamFilters) {
+  const createdAt = beam.created_at ? new Date(beam.created_at) : null
+  const createdFrom = filters.createdFrom ? new Date(filters.createdFrom) : null
+  const createdTo = filters.createdTo ? new Date(filters.createdTo) : null
+
+  if (filters.name && !beam.name.toLowerCase().includes(filters.name.toLowerCase())) return false
+  if (filters.material && beam.material !== filters.material) return false
+  if (!withinRange(beam.elasticity_gpa, filters.elasticityMin, filters.elasticityMax)) return false
+  if (!withinRange(beam.inertia_cm4, filters.inertiaMin, filters.inertiaMax)) return false
+  if (filters.ratioMin != null || filters.ratioMax != null) {
+    if (beam.allowed_deflection_ratio == null) return false
+    if (!withinRange(beam.allowed_deflection_ratio, filters.ratioMin, filters.ratioMax)) return false
+  }
+
+  if (createdAt) {
+    if (createdFrom && createdAt < createdFrom) return false
+    if (createdTo && createdAt > createdTo) return false
+  }
+
+  return true
+}
+
+function filterList(list: Beam[], filters: BeamFilters): Beam[] {
+  return list.filter((beam) => matchFilters(beam, filters))
+}
+
 function filterMock(filters: BeamFilters): BeamsResponse {
-  const filtered = mockBeams.filter((beam) => {
-    const createdAt = beam.created_at ? new Date(beam.created_at) : null
-    const createdFrom = filters.createdFrom ? new Date(filters.createdFrom) : null
-    const createdTo = filters.createdTo ? new Date(filters.createdTo) : null
-
-    if (filters.name && !beam.name.toLowerCase().includes(filters.name.toLowerCase())) return false
-    if (filters.material && beam.material !== filters.material) return false
-    if (!withinRange(beam.elasticity_gpa, filters.elasticityMin, filters.elasticityMax)) return false
-    if (!withinRange(beam.inertia_cm4, filters.inertiaMin, filters.inertiaMax)) return false
-    if (filters.ratioMin != null || filters.ratioMax != null) {
-      if (beam.allowed_deflection_ratio == null) return false
-      if (!withinRange(beam.allowed_deflection_ratio, filters.ratioMin, filters.ratioMax)) return false
-    }
-
-    if (createdAt) {
-      if (createdFrom && createdAt < createdFrom) return false
-      if (createdTo && createdAt > createdTo) return false
-    }
-
-    return true
-  })
-
+  const filtered = filterList(mockBeams, filters)
   return {
     beams: filtered,
-    meta: { current_page: 1, total_count: filtered.length, per_page: filtered.length },
+    meta: { current_page: 1, total_count: mockBeams.length, per_page: mockBeams.length },
     source: 'mock',
   }
 }
 
 export async function fetchBeams(filters: BeamFilters): Promise<BeamsResponse> {
   const query = buildQuery(filters)
-  const url = `${API_BASE}/beams${query ? `?${query}` : ''}`
+  const url = `${buildUrl('beams')}${query ? `?${query}` : ''}`
 
   try {
     const response = await fetch(url)
     if (!response.ok) throw new Error(`API error: ${response.status}`)
     const data = await response.json()
-    return { beams: data.beams ?? data.data ?? [], meta: data.meta, source: 'api' }
+    const beams = data.beams ?? data.data ?? []
+    const totalCount = data.meta?.total_count ?? beams.length
+    const filtered = filterList(beams, filters)
+    return {
+      beams: filtered,
+      meta: {
+        current_page: data.meta?.current_page ?? 1,
+        total_count: totalCount,
+        per_page: data.meta?.per_page ?? filtered.length,
+      },
+      source: 'api',
+    }
   } catch (error) {
     console.warn('Falling back to mock data', error)
     return filterMock(filters)
@@ -99,7 +119,7 @@ export async function fetchBeams(filters: BeamFilters): Promise<BeamsResponse> {
 
 export async function fetchBeam(id: number): Promise<{ beam: Beam; source: 'api' | 'mock' }> {
   try {
-    const response = await fetch(`${API_BASE}/beams/${id}`)
+    const response = await fetch(buildUrl(`beams/${id}`))
     if (!response.ok) throw new Error(`API error: ${response.status}`)
     const data = await response.json()
     return { beam: data.beam ?? data, source: 'api' }

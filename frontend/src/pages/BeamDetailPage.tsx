@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Alert, Badge, Spinner } from 'react-bootstrap'
 import { Link, useParams } from 'react-router-dom'
 import { displayImage, fetchBeam, materialLabel } from '../services/api'
@@ -86,7 +86,9 @@ export function BeamDetailPage() {
           </div>
           <div>
             <div className="detail-label">Норма прогиба</div>
-            <div className="detail-value">L/{beam.allowed_deflection_ratio ?? '-'}</div>
+            <div className="detail-value">
+              {beam.allowed_deflection_ratio ? `L/${beam.allowed_deflection_ratio}` : '—'}
+            </div>
           </div>
         </div>
 

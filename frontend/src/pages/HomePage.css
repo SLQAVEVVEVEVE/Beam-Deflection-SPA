@@ -1,8 +1,8 @@
 .hero {
   position: relative;
-  min-height: 82vh;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.45)),
-    url('/placeholder-hero.jpg') center/cover no-repeat;
+  min-height: 78vh;
+  background: radial-gradient(120% 120% at 20% 20%, rgba(245, 181, 54, 0.45), transparent),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.45)), url('/placeholder-hero.jpg') center/cover no-repeat;
   color: #fff;
   display: flex;
   align-items: center;
@@ -14,7 +14,7 @@
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.55) 100%);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.6) 100%);
 }
 
 .hero-content {
@@ -54,4 +54,34 @@
   background: transparent;
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+@media (max-width: 992px) {
+  .hero {
+    min-height: 72vh;
+    padding: 32px 14px;
+  }
+
+  .hero-title {
+    font-size: 34px;
+  }
+}
+
+@media (max-width: 576px) {
+  .hero {
+    min-height: 60vh;
+    padding: 28px 12px;
+  }
+
+  .hero-title {
+    font-size: 28px;
+  }
+
+  .hero-subtitle {
+    font-size: 16px;
+  }
+
+  .hero-btn {
+    width: 100%;
+  }
 }

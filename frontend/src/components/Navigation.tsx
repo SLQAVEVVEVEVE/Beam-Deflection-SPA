@@ -1,12 +1,13 @@
-﻿import { Container, Nav, Navbar } from 'react-bootstrap'
+import { Container, Nav, Navbar } from 'react-bootstrap'
 import { Link, NavLink } from 'react-router-dom'
+import logo from '/logo.png'
 
 export function Navigation() {
   return (
     <Navbar expand="lg" className="top-nav shadow-sm">
       <Container className="d-flex align-items-center">
         <Navbar.Brand as={Link} to="/" className="d-flex align-items-center gap-2">
-          <img src="/logo.png" alt="Строй и пой" className="brand-logo" />
+          <img src={logo} alt="Строй и пой" className="brand-logo" />
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="main-nav" />
         <Navbar.Collapse id="main-nav" className="justify-content-end">
