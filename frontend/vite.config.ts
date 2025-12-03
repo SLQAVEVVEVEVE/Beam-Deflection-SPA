@@ -5,7 +5,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 // Vite dev server with proxy to Rails API (http://localhost:3000/api)
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const base = env.VITE_BASE_PATH || '/'
+  const isTauri = !!env.TAURI_PLATFORM
+  const base = isTauri ? './' : env.VITE_BASE_PATH || '/'
 
   return {
     base,

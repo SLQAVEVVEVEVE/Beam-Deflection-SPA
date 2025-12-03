@@ -1,0 +1,28 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "enables the default permissions",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "cors-fetch:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "http://192.168.1.73:3000"
+        },
+        {
+          "url": "http://192.168.1.73:9000"
+        }
+      ],
+      "deny": []
+    },
+    "core:default",
+    "http:allow-fetch",
+    "http:allow-fetch-read-body",
+    "http:allow-fetch-send",
+    "core:webview:allow-internal-toggle-devtools"
+  ]
+}
