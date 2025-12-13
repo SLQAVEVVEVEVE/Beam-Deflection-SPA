@@ -1,7 +1,11 @@
 ﻿import { useEffect, useState } from 'react'
 import { Alert, Col, Form, InputGroup, Row, Spinner, Stack } from 'react-bootstrap'
 import { BeamCard } from '../components/BeamCard'
+import { FloatingCart } from '../components/FloatingCart'
 import { fetchBeams } from '../services/api'
+import { fetchCartItemsCount } from '../services/cartBadge'
+import { isAuthenticated } from '../services/auth'
+import { withWebOrigin } from '../services/webOrigin'
 import type { Beam, BeamFilters } from '../types'
 
 export function BeamsListPage() {
@@ -9,6 +13,7 @@ export function BeamsListPage() {
   const [beams, setBeams] = useState<Beam[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [cartItemsCount, setCartItemsCount] = useState(0)
 
   const load = async () => {
     setLoading(true)
@@ -27,6 +32,23 @@ export function BeamsListPage() {
   useEffect(() => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadBadge = async () => {
+      const count = await fetchCartItemsCount()
+      if (!cancelled) setCartItemsCount(count)
+    }
+
+    if (isAuthenticated()) {
+      loadBadge()
+    }
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   return (
@@ -64,6 +86,8 @@ export function BeamsListPage() {
           ))}
         </Row>
       )}
+
+      <FloatingCart href={withWebOrigin('/cart')} count={cartItemsCount} disabled={!isAuthenticated()} />
     </Stack>
   )
 }
