@@ -7,10 +7,10 @@
     "http": null
   },
   "build": {
-    "frontendDist": "../frontend/dist",
+    "frontendDist": "../frontend/dist-tauri",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "cd ../frontend && npm run dev",
-    "beforeBuildCommand": "cd ../frontend && npm run build -- --mode tauri"
+    "beforeDevCommand": "npm --prefix frontend run dev",
+    "beforeBuildCommand": "npm --prefix frontend run build -- --mode tauri"
   },
   "app": {
     "withGlobalTauri": true,
