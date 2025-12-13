@@ -33,5 +33,5 @@
 # Ignore master key for decrypting credentials and more.
 /config/master.key
 
-# Tauri build artifacts (not used in this branch)
-/src-tauri/
+# Tauri build artifacts
+/src-tauri/target/
