@@ -1,6 +1,7 @@
 import { Container, Nav, Navbar } from 'react-bootstrap'
 import { Link, NavLink } from 'react-router-dom'
-import logo from '/logo.png'
+
+const logo = `${import.meta.env.BASE_URL}logo.png`
 
 export function Navigation() {
   return (

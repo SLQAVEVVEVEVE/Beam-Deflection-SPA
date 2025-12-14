@@ -37,7 +37,7 @@ const slides = [
 export function HomePage() {
   return (
     <>
-      <div className="hero">
+      <div className="hero" style={{ backgroundImage: `url(${import.meta.env.BASE_URL}hero-blueprint.png)` }}>
         <div className="hero-overlay" />
         <div className="hero-content">
           <h1 className="hero-title">Расчёт прогиба балок</h1>

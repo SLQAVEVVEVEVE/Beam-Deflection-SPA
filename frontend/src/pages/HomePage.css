@@ -1,7 +1,9 @@
 .hero {
   position: relative;
   min-height: 360px;
-  background: url('/hero-blueprint.png') center/cover no-repeat;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
   color: #1f2937;
   display: flex;
   align-items: center;

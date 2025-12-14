@@ -6,33 +6,45 @@ import { fetchBeams } from '../services/api'
 import { fetchCartItemsCount } from '../services/cartBadge'
 import { isAuthenticated } from '../services/auth'
 import { withWebOrigin } from '../services/webOrigin'
-import type { Beam, BeamFilters } from '../types'
+import { applyFilters, selectAppliedFilters, selectCurrentFilters, setFilters } from '../store/filtersSlice'
+import { useAppDispatch, useAppSelector } from '../store/hooks'
+import type { Beam } from '../types'
 
 export function BeamsListPage() {
-  const [filters, setFilters] = useState<BeamFilters>({ perPage: 12 })
+  const dispatch = useAppDispatch()
+  const currentFilters = useAppSelector(selectCurrentFilters)
+  const appliedFilters = useAppSelector(selectAppliedFilters)
+
   const [beams, setBeams] = useState<Beam[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cartItemsCount, setCartItemsCount] = useState(0)
 
-  const load = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await fetchBeams(filters)
-      setBeams(result.beams)
-    } catch (err) {
-      setError((err as Error).message)
-      setBeams([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    let cancelled = false
+
+    const loadBeams = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const result = await fetchBeams(appliedFilters)
+        if (!cancelled) setBeams(result.beams)
+      } catch (err) {
+        if (!cancelled) {
+          setError((err as Error).message)
+          setBeams([])
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    loadBeams()
+
+    return () => {
+      cancelled = true
+    }
+  }, [appliedFilters])
 
   useEffect(() => {
     let cancelled = false
@@ -59,11 +71,16 @@ export function BeamsListPage() {
         <InputGroup>
           <Form.Control
             placeholder="Поиск по названию, материалу..."
-            value={filters.name || ''}
-            onChange={(e) => setFilters((prev) => ({ ...prev, name: e.target.value }))}
-            onKeyDown={(e) => e.key === 'Enter' && load()}
+            value={currentFilters.name || ''}
+            onChange={(e) => dispatch(setFilters({ name: e.target.value, page: 1 }))}
+            onKeyDown={(e) => e.key === 'Enter' && dispatch(applyFilters(undefined))}
           />
-          <button className="btn btn-search" type="button" onClick={load} disabled={loading}>
+          <button
+            className="btn btn-search"
+            type="button"
+            onClick={() => dispatch(applyFilters(undefined))}
+            disabled={loading}
+          >
             Найти
           </button>
         </InputGroup>
