@@ -22,7 +22,7 @@ gem 'activerecord', '~> 8.1.1'
 # Use PostgreSQL as the database
 # The default database adapter in the Gemfile is sqlite3 for development and test
 # We'll use PostgreSQL for all environments
-gem 'pg', '~> 1.5'
+gem 'pg', '~> 1.6'
 
 # JWT for token-based authentication
 gem 'jwt'
