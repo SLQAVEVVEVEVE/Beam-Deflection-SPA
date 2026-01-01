@@ -16,7 +16,7 @@ gem "rswag-api"
 gem "rswag-ui"
 gem "rswag-specs"
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
-gem "bcrypt", "~> 3.1.7"
+gem "bcrypt", "~> 3.1.21"
 gem 'activerecord', '~> 8.1.1'
 
 # Use PostgreSQL as the database
