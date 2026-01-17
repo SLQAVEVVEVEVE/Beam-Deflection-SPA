@@ -25,15 +25,57 @@ class SiglipService {
   static processor: Awaited<ReturnType<typeof AutoProcessor.from_pretrained>> | null = null
   static textModel: Awaited<ReturnType<typeof SiglipTextModel.from_pretrained>> | null = null
   static visionModel: Awaited<ReturnType<typeof SiglipVisionModel.from_pretrained>> | null = null
+  static textInitPromise: Promise<void> | null = null
+  static visionInitPromise: Promise<void> | null = null
 
-  static async init(progress_callback?: (data: unknown) => void) {
-    if (this.tokenizer) return
+  static async ensureText(progress_callback?: (data: unknown) => void) {
+    if (this.tokenizer && this.textModel) return
+    if (this.textInitPromise) return this.textInitPromise
+
     const options = { device: 'wasm', dtype: 'q8' } as const
+    this.textInitPromise = (async () => {
+      try {
+        if (!this.tokenizer) {
+          this.tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID, { progress_callback })
+        }
+        if (!this.textModel) {
+          this.textModel = await SiglipTextModel.from_pretrained(MODEL_ID, { ...options, progress_callback })
+        }
+      } catch (error) {
+        this.tokenizer = null
+        this.textModel = null
+        throw error
+      } finally {
+        this.textInitPromise = null
+      }
+    })()
 
-    this.tokenizer = await AutoTokenizer.from_pretrained(MODEL_ID, { progress_callback })
-    this.processor = await AutoProcessor.from_pretrained(MODEL_ID, { progress_callback })
-    this.textModel = await SiglipTextModel.from_pretrained(MODEL_ID, { ...options, progress_callback })
-    this.visionModel = await SiglipVisionModel.from_pretrained(MODEL_ID, { ...options, progress_callback })
+    return this.textInitPromise
+  }
+
+  static async ensureVision(progress_callback?: (data: unknown) => void) {
+    if (this.processor && this.visionModel) return
+    if (this.visionInitPromise) return this.visionInitPromise
+
+    const options = { device: 'wasm', dtype: 'q8' } as const
+    this.visionInitPromise = (async () => {
+      try {
+        if (!this.processor) {
+          this.processor = await AutoProcessor.from_pretrained(MODEL_ID, { progress_callback })
+        }
+        if (!this.visionModel) {
+          this.visionModel = await SiglipVisionModel.from_pretrained(MODEL_ID, { ...options, progress_callback })
+        }
+      } catch (error) {
+        this.processor = null
+        this.visionModel = null
+        throw error
+      } finally {
+        this.visionInitPromise = null
+      }
+    })()
+
+    return this.visionInitPromise
   }
 }
 
@@ -44,7 +86,7 @@ ctx.addEventListener('message', async (event) => {
 
   try {
     if (type === 'init') {
-      await SiglipService.init((msg) => {
+      await SiglipService.ensureText((msg) => {
         ctx.postMessage({ type: 'progress', data: msg })
       })
 
@@ -78,7 +120,7 @@ ctx.addEventListener('message', async (event) => {
     }
 
     if (type === 'image') {
-      await SiglipService.init()
+      await SiglipService.ensureVision()
       if (!SiglipService.processor || !SiglipService.visionModel) {
         throw new Error('SigLIP processor or vision model is unavailable')
       }

@@ -14,8 +14,14 @@ services:
     build: .
     ports:
       - "3000:3000"
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     extra_hosts:
       - "host.docker.internal:host-gateway"
+      - "rubygems.org:151.101.1.227"
+      - "api.rubygems.org:151.101.1.227"
+      - "index.rubygems.org:151.101.1.227"
     env_file:
       - .env
     environment:
@@ -25,7 +31,6 @@ services:
       - RAILS_SSL=true
       - SSL_CERT_PATH=/etc/rails/certs/cert.crt
       - SSL_KEY_PATH=/etc/rails/certs/cert.key
-      - BUNDLE_PATH=/bundle
     depends_on:
       - db
       - redis
@@ -33,7 +38,7 @@ services:
     volumes:
       - .:/app
       - ./nginx/certs:/etc/rails/certs:ro
-      - bundle_cache:/bundle
+      - bundle_cache:/usr/local/bundle
     command: bash -lc "rm -f tmp/pids/server.pid && bundle exec puma -C config/puma.rb"
 
   frontend:
