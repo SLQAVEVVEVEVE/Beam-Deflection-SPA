@@ -15,11 +15,10 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-security:
-- bearerAuth: []
 paths:
   "/api/auth/sign_in":
     post:
+      operationId: authSignIn
       summary: Sign in and receive JWT
       tags:
       - Auth
@@ -63,6 +62,7 @@ paths:
                   example: secret123
   "/api/auth/sign_up":
     post:
+      operationId: authSignUp
       summary: Register and receive JWT
       tags:
       - Auth
@@ -70,6 +70,22 @@ paths:
       responses:
         '201':
           description: User created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      email:
+                        type: string
+                      moderator:
+                        type: boolean
         '422':
           description: Validation error
       requestBody:
@@ -92,6 +108,7 @@ paths:
                   type: string
   "/api/auth/sign_out":
     post:
+      operationId: authSignOut
       summary: Sign out and blacklist JWT token
       description: |
         Signs out the current user by adding their JWT token to the Redis blacklist.
@@ -115,6 +132,7 @@ paths:
           description: Unauthorized (no valid token provided)
   "/api/me":
     get:
+      operationId: meShow
       summary: Current user profile
       tags:
       - Me
@@ -123,7 +141,19 @@ paths:
       responses:
         '200':
           description: Profile returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  email:
+                    type: string
+                  moderator:
+                    type: boolean
     put:
+      operationId: meUpdate
       summary: Update current user credentials
       tags:
       - Me
@@ -133,6 +163,17 @@ paths:
       responses:
         '200':
           description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  email:
+                    type: string
+                  moderator:
+                    type: boolean
       requestBody:
         content:
           application/json:
@@ -147,35 +188,31 @@ paths:
                   minLength: 6
                 password_confirmation:
                   type: string
-  "/api/beam_deflection_beams":
-    post:
-      summary: Add beam to current draft beam deflection
+  "/api/beam_deflections/cart_badge":
+    get:
+      operationId: beamDeflectionsCartBadge
+      summary: Get current draft id and items count
       tags:
       - BeamDeflections
       security:
       - bearerAuth: []
-      parameters: []
       responses:
-        '201':
-          description: Beam added to cart
+        '200':
+          description: Draft id and total items count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  beam_deflection_id:
+                    type: integer
+                  items_count:
+                    type: integer
         '401':
           description: Unauthorized
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-              - beam_id
-              - quantity
-              properties:
-                beam_id:
-                  type: integer
-                quantity:
-                  type: integer
-                  minimum: 1
   "/api/beam_deflections":
     get:
+      operationId: beamDeflectionsList
       summary: List beam deflections (заявки)
       description: |
         Returns list of beam deflections (заявки).
@@ -242,10 +279,6 @@ paths:
                         completed_at:
                           type: string
                           format: date-time
-                        length_m:
-                          type: number
-                        udl_kn_m:
-                          type: number
                         note:
                           type: string
                         creator_login:
@@ -271,6 +304,7 @@ paths:
           description: Unauthorized
   "/api/beam_deflections/{id}":
     get:
+      operationId: beamDeflectionsShow
       summary: Get beam deflection by ID
       tags:
       - BeamDeflections
@@ -294,10 +328,6 @@ paths:
                     type: integer
                   status:
                     type: string
-                  length_m:
-                    type: number
-                  udl_kn_m:
-                    type: number
                   note:
                     type: string
                   formed_at:
@@ -325,7 +355,18 @@ paths:
                           type: string
                         beam_material:
                           type: string
+                        beam_image_url:
+                          type: string
+                          nullable: true
                         quantity:
+                          type: integer
+                        length_m:
+                          type: number
+                          nullable: true
+                        udl_kn_m:
+                          type: number
+                          nullable: true
+                        position:
                           type: integer
                         deflection_mm:
                           type: number
@@ -336,6 +377,7 @@ paths:
         '404':
           description: Beam deflection not found
     put:
+      operationId: beamDeflectionsUpdate
       summary: Update beam deflection (draft or formed only)
       tags:
       - BeamDeflections
@@ -356,17 +398,62 @@ paths:
                 beam_deflection:
                   type: object
                   properties:
-                    length_m:
-                      type: number
-                      minimum: 0.01
-                    udl_kn_m:
-                      type: number
-                      minimum: 0.01
                     note:
                       type: string
       responses:
         '200':
           description: Beam deflection updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  status:
+                    type: string
+                  note:
+                    type: string
+                  formed_at:
+                    type: string
+                    format: date-time
+                  completed_at:
+                    type: string
+                    format: date-time
+                  creator_login:
+                    type: string
+                  moderator_login:
+                    type: string
+                  result_deflection_mm:
+                    type: number
+                  within_norm:
+                    type: boolean
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        beam_id:
+                          type: integer
+                        beam_name:
+                          type: string
+                        beam_material:
+                          type: string
+                        beam_image_url:
+                          type: string
+                          nullable: true
+                        quantity:
+                          type: integer
+                        length_m:
+                          type: number
+                          nullable: true
+                        udl_kn_m:
+                          type: number
+                          nullable: true
+                        position:
+                          type: integer
+                        deflection_mm:
+                          type: number
         '401':
           description: Unauthorized
         '403':
@@ -374,6 +461,7 @@ paths:
         '422':
           description: Validation error
     delete:
+      operationId: beamDeflectionsDelete
       summary: Delete (soft delete) beam deflection
       tags:
       - BeamDeflections
@@ -392,8 +480,88 @@ paths:
           description: Unauthorized
         '403':
           description: Not authorized (must be creator)
+  "/api/beam_deflections/{beam_deflection_id}/items/update_item":
+    put:
+      operationId: beamDeflectionsUpdateItem
+      summary: Update item inside draft beam deflection
+      tags:
+      - BeamDeflections
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: beam_deflection_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - beam_id
+              - beam_deflection_beam
+              properties:
+                beam_id:
+                  type: integer
+                beam_deflection_beam:
+                  type: object
+                  properties:
+                    quantity:
+                      type: integer
+                      minimum: 1
+                    length_m:
+                      type: number
+                      minimum: 0.001
+                      nullable: true
+                    udl_kn_m:
+                      type: number
+                      minimum: 0
+                      nullable: true
+                    position:
+                      type: integer
+                      minimum: 1
+      responses:
+        '200':
+          description: Item updated
+        '401':
+          description: Unauthorized
+        '403':
+          description: Not authorized (must be creator and draft)
+        '422':
+          description: Validation error
+  "/api/beam_deflections/{beam_deflection_id}/items/remove_item":
+    delete:
+      operationId: beamDeflectionsRemoveItem
+      summary: Remove item from draft beam deflection
+      tags:
+      - BeamDeflections
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: beam_deflection_id
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: beam_id
+        in: query
+        required: true
+        schema:
+          type: integer
+      responses:
+        '204':
+          description: Item removed
+        '401':
+          description: Unauthorized
+        '403':
+          description: Not authorized (must be creator and draft)
+        '404':
+          description: Item not found
   "/api/beam_deflections/{id}/form":
     put:
+      operationId: beamDeflectionsForm
       summary: Validate draft and mark as formed (user only)
       tags:
       - BeamDeflections
@@ -408,12 +576,64 @@ paths:
       responses:
         '200':
           description: BeamDeflection formed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  status:
+                    type: string
+                  note:
+                    type: string
+                  formed_at:
+                    type: string
+                    format: date-time
+                  completed_at:
+                    type: string
+                    format: date-time
+                  creator_login:
+                    type: string
+                  moderator_login:
+                    type: string
+                  result_deflection_mm:
+                    type: number
+                  within_norm:
+                    type: boolean
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        beam_id:
+                          type: integer
+                        beam_name:
+                          type: string
+                        beam_material:
+                          type: string
+                        beam_image_url:
+                          type: string
+                          nullable: true
+                        quantity:
+                          type: integer
+                        length_m:
+                          type: number
+                          nullable: true
+                        udl_kn_m:
+                          type: number
+                          nullable: true
+                        position:
+                          type: integer
+                        deflection_mm:
+                          type: number
         '403':
           description: Cannot form foreign beam deflection
         '422':
           description: Required fields missing or empty cart
   "/api/beam_deflections/{id}/complete":
     put:
+      operationId: beamDeflectionsComplete
       summary: Complete formed beam deflection (moderator only)
       description: |
         Calculates deflection results and marks beam deflection as completed.
@@ -440,6 +660,7 @@ paths:
           description: Beam deflection must be in formed status
   "/api/beam_deflections/{id}/reject":
     put:
+      operationId: beamDeflectionsReject
       summary: Reject formed beam deflection (moderator only)
       description: |
         Rejects a beam deflection that is in 'formed' status.
@@ -465,13 +686,85 @@ paths:
           description: Beam deflection must be in formed status
   "/api/beams":
     get:
+      operationId: beamsList
       summary: List beams (public)
       tags:
       - Beams
+      parameters:
+      - name: q
+        in: query
+        description: Search query (by name)
+        schema:
+          type: string
+      - name: active
+        in: query
+        description: Include inactive beams (pass active=false)
+        schema:
+          type: boolean
+      - name: page
+        in: query
+        description: Page number (default 1)
+        schema:
+          type: integer
+          minimum: 1
+      - name: per_page
+        in: query
+        description: Items per page (default 20, max 100)
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
       responses:
         '200':
           description: Beams returned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  beams:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+                        description:
+                          type: string
+                          nullable: true
+                        active:
+                          type: boolean
+                        image_url:
+                          type: string
+                          nullable: true
+                        image_key:
+                          type: string
+                          nullable: true
+                        material:
+                          type: string
+                        elasticity_gpa:
+                          type: number
+                        inertia_cm4:
+                          type: number
+                        allowed_deflection_ratio:
+                          type: integer
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      next_page:
+                        type: integer
+                      prev_page:
+                        type: integer
+                      total_pages:
+                        type: integer
+                      total_count:
+                        type: integer
     post:
+      operationId: beamsCreate
       summary: Create beam (moderator only)
       tags:
       - Beams
@@ -511,6 +804,7 @@ paths:
                   type: integer
   "/api/beams/{id}":
     get:
+      operationId: beamsShow
       summary: Fetch beam details (public)
       tags:
       - Beams
@@ -523,7 +817,36 @@ paths:
       responses:
         '200':
           description: Beam found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  description:
+                    type: string
+                    nullable: true
+                  active:
+                    type: boolean
+                  image_url:
+                    type: string
+                    nullable: true
+                  image_key:
+                    type: string
+                    nullable: true
+                  material:
+                    type: string
+                  elasticity_gpa:
+                    type: number
+                  inertia_cm4:
+                    type: number
+                  allowed_deflection_ratio:
+                    type: integer
     put:
+      operationId: beamsUpdate
       summary: Update beam (moderator only)
       tags:
       - Beams
@@ -551,6 +874,7 @@ paths:
                 allowed_deflection_ratio:
                   type: integer
     delete:
+      operationId: beamsDelete
       summary: Delete beam (moderator only)
       tags:
       - Beams
@@ -565,10 +889,39 @@ paths:
       responses:
         '204':
           description: Beam deleted
+  "/api/beams/{id}/add_to_draft":
+    post:
+      operationId: beamsAddToDraft
+      summary: Add beam to current draft beam deflection
+      tags:
+      - Beams
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: quantity
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Beam added to draft
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  beam_deflection_id:
+                    type: integer
+                  items_count:
+                    type: integer
+        '401':
+          description: Unauthorized
 servers:
-- url: "{scheme}://{host}"
-  variables:
-    scheme:
-      default: http
-    host:
-      default: localhost:3000
+- url: /

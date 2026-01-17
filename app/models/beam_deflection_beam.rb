@@ -13,6 +13,8 @@ class BeamDeflectionBeam < ApplicationRecord
   validates :quantity, numericality: { only_integer: true, greater_than: 0 }
   validates :is_primary, inclusion: { in: [true, false] }
   validates :beam_deflection_id, uniqueness: { scope: :beam_id }
+  validates :length_m, numericality: { greater_than: 0 }, allow_nil: true
+  validates :udl_kn_m, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   
   # Backward compatibility
   before_validation do

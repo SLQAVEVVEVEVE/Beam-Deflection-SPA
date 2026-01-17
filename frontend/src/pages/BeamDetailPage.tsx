@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Alert, Badge, Spinner } from 'react-bootstrap'
 import { Link, useParams } from 'react-router-dom'
 import { displayImage, fetchBeam, materialLabel } from '../services/api'
@@ -15,7 +15,7 @@ export function BeamDetailPage() {
 
   useEffect(() => {
     if (!numericId) {
-      setError('Некорректный идентификатор')
+      setError('Некорректный идентификатор балки')
       setLoading(false)
       return
     }
@@ -61,7 +61,7 @@ export function BeamDetailPage() {
           <Badge bg="success">API через прокси</Badge>
         ) : (
           <Badge bg="warning" text="dark">
-            Mock (API недоступен)
+            Тестовые данные (API недоступен)
           </Badge>
         )}
       </div>
@@ -82,20 +82,22 @@ export function BeamDetailPage() {
           </div>
           <div>
             <div className="detail-label">Момент инерции</div>
-            <div className="detail-value">{beam.inertia_cm4} см⁴</div>
+            <div className="detail-value">{beam.inertia_cm4} см^4</div>
           </div>
           <div>
-            <div className="detail-label">Норма прогиба</div>
-            <div className="detail-value">L/{beam.allowed_deflection_ratio ?? '-'}</div>
+            <div className="detail-label">Допустимое соотношение</div>
+            <div className="detail-value">
+              {beam.allowed_deflection_ratio ? `L/${beam.allowed_deflection_ratio}` : '—'}
+            </div>
           </div>
         </div>
 
         <div className="mb-2 fw-semibold">Описание</div>
-        <div className="mb-3">{beam.description || 'Нет описания'}</div>
+        <div className="mb-3">{beam.description || 'Описание отсутствует'}</div>
 
         <div className="detail-actions">
           <Link to="/beams" className="btn btn-outline-light">
-            Назад к типам
+            Назад к списку
           </Link>
         </div>
       </div>

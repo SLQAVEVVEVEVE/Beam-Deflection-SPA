@@ -1,14 +1,18 @@
-﻿import { Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { Button, Spinner } from 'react-bootstrap'
 import { displayImage, materialLabel } from '../services/api'
 import type { Beam } from '../types'
 
 interface Props {
   beam: Beam
+  onAdd?: () => void
+  addLoading?: boolean
+  addDisabled?: boolean
 }
 
 const FALLBACK_IMG = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='140' viewBox='0 0 200 140'><rect width='200' height='140' fill='%23e9ecef'/><rect x='35' y='25' width='130' height='90' fill='none' stroke='%23c0c4c9' stroke-width='3' stroke-dasharray='6 6'/><text x='100' y='75' text-anchor='middle' fill='%237a828c' font-family='Arial, sans-serif' font-size='12'>Нет изображения</text></svg>`
 
-export function BeamCard({ beam }: Props) {
+export function BeamCard({ beam, onAdd, addLoading, addDisabled }: Props) {
   const src = displayImage(beam) || FALLBACK_IMG
 
   return (
@@ -29,10 +33,20 @@ export function BeamCard({ beam }: Props) {
         <div className="beam-meta">
           <div>Материал: {materialLabel(beam.material)}</div>
           <div>
-            Норма: L/{beam.allowed_deflection_ratio ?? '-'} · E = {beam.elasticity_gpa} ГПа · I = {beam.inertia_cm4} см⁴
+            Параметры: L/{beam.allowed_deflection_ratio ?? '-'} · E = {beam.elasticity_gpa} ГПа · I = {beam.inertia_cm4}{' '}
+            см^4
           </div>
         </div>
-        <div className="beam-actions single">
+        <div className="beam-actions">
+          <Button
+            variant="accent"
+            className="beam-btn"
+            onClick={() => onAdd?.()}
+            disabled={addDisabled || addLoading || !onAdd}
+            title={addDisabled ? 'Войдите, чтобы добавить' : 'Добавить'}
+          >
+            {addLoading ? <Spinner size="sm" animation="border" /> : 'Добавить'}
+          </Button>
           <Link to={`/beams/${beam.id}`} className="btn btn-outline-light beam-btn">
             Подробнее
           </Link>

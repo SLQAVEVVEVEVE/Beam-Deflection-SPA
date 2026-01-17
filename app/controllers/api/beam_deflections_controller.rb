@@ -1,7 +1,8 @@
 module Api
   class BeamDeflectionsController < BaseController
-    before_action :require_auth!
-    before_action :set_beam_deflection, only: [:show, :update, :form, :complete, :reject, :destroy]
+    before_action :require_auth!, except: [:async_result]
+    before_action :require_async_callback_auth!, only: [:async_result]
+    before_action :set_beam_deflection, only: [:show, :update, :form, :complete, :reject, :destroy, :async_result]
     before_action :authorize_view!, only: [:show]
     before_action :check_owner, only: [:update, :form, :destroy]
     before_action :require_moderator!, only: [:complete, :reject]
@@ -11,7 +12,7 @@ module Api
     # - Moderators see ALL non-deleted (including draft)
     # - Regular users see only their own non-draft
     def index
-      scope = BeamDeflection.not_deleted.includes(:creator, :moderator, :beam_deflection_beams)
+      scope = BeamDeflection.not_deleted.includes(:creator, :moderator, beam_deflection_beams: :beam)
 
       if Current.user&.moderator?
         # Moderators see all non-deleted beam_deflections (including draft)
@@ -23,8 +24,8 @@ module Api
       statuses = Array(params[:status]).presence
       scope = scope.by_statuses(statuses) if statuses
 
-      from = params[:from]
-      to   = params[:to]
+      from = parse_date_boundary(params[:from], :start)
+      to = parse_date_boundary(params[:to], :end)
       if from.present?
         scope = scope.where('formed_at >= ?', from)
       end
@@ -42,18 +43,29 @@ module Api
       beam_deflections = scope.page(page).per(per)
 
       data = beam_deflections.map do |bd|
+        item_deflections =
+          if bd.result_deflection_mm.present?
+            bd.beam_deflection_beams.map do |bdb|
+              beam = bdb.beam
+              next if beam.nil? || bdb.length_m.blank? || bdb.udl_kn_m.blank?
+              next if bdb.length_m.to_f <= 0 || bdb.udl_kn_m.to_f < 0
+
+              Calc::Deflection.call(bdb, beam).round(6)
+            end.compact
+          end
+
         {
           id: bd.id,
           status: bd.status,
           formed_at: bd.formed_at,
           completed_at: bd.completed_at,
-          length_m: bd.length_m,
-          udl_kn_m: bd.udl_kn_m,
           note: bd.note,
           creator_login: bd.creator&.email,
           moderator_login: bd.moderator&.email,
-          items_with_result_count: bd.result_deflection_mm.present? ? nil : bd.beam_deflection_beams.where.not(deflection_mm: nil).count,
-          result_deflection_mm: bd.result_deflection_mm
+          items_with_result_count: item_deflections&.length,
+          items_count: bd.beam_deflection_beams.size,
+          result_deflection_mm: bd.result_deflection_mm,
+          item_deflections_mm: item_deflections
         }
       end
 
@@ -93,11 +105,13 @@ module Api
       return render_error('Request must be in draft status', :unprocessable_entity) unless @beam_deflection.draft?
       return render_error('Not authorized', :forbidden) unless @beam_deflection.creator == Current.user
 
-      unless @beam_deflection.length_m.present? && @beam_deflection.udl_kn_m.present? && @beam_deflection.beam_deflection_beams.exists?
-        return render_error('Required fields missing or empty cart', :unprocessable_entity)
-      end
+      items = @beam_deflection.beam_deflection_beams
+      return render_error('Empty cart', :unprocessable_entity) unless items.exists?
 
-      @beam_deflection.update!(status: BeamDeflectionScopes::STATUSES[:formed], formed_at: Time.current)
+      missing = items.where(length_m: nil).or(items.where(udl_kn_m: nil)).exists?
+      return render_error('Required fields missing', :unprocessable_entity) if missing
+
+      @beam_deflection.update!(status: BeamDeflection::STATUSES[:formed], formed_at: Time.current)
       render json: serialize_beam_deflection(@beam_deflection)
     rescue => e
       render_error(@beam_deflection.errors.full_messages.presence || e.message, :unprocessable_entity)
@@ -109,23 +123,63 @@ module Api
         return render_error('Request must be in formed status', :unprocessable_entity)
       end
 
-      # compute results per LR rules
-      total = @beam_deflection.compute_result!
-      ratio = @beam_deflection.beams.minimum(:allowed_deflection_ratio).to_f
-      max_allowed = ratio.positive? ? (@beam_deflection.length_m.to_f * 1000.0 / ratio) : Float::INFINITY
-      within = total <= max_allowed
+      BeamDeflection.transaction do
+        @beam_deflection.update!(
+          status: BeamDeflection::STATUSES[:completed],
+          moderator: Current.user,
+          completed_at: Time.current,
+          result_deflection_mm: nil,
+          within_norm: nil,
+          calculated_at: nil
+        )
+      end
 
-      @beam_deflection.update!(
-        status: BeamDeflectionScopes::STATUSES[:completed],
-        moderator: Current.user,
-        completed_at: Time.current,
-        result_deflection_mm: total,
-        within_norm: within,
-        calculated_at: Time.current
-      )
+      AsyncDeflectionClient.trigger_for!(@beam_deflection)
       render json: serialize_beam_deflection(@beam_deflection)
     rescue => e
       render_error(@beam_deflection.errors.full_messages.presence || e.message, :unprocessable_entity)
+    end
+
+    # POST /api/beam_deflections/:id/async_result
+    # Callback endpoint for an async service that provides calculation results.
+    def async_result
+      if params[:beam_deflection_id].present? && params[:beam_deflection_id].to_i != @beam_deflection.id
+        return render_error('beam_deflection_id mismatch', :unprocessable_entity)
+      end
+
+      return render_error('Request must be in completed status', :unprocessable_entity) unless @beam_deflection.completed?
+
+      permitted = params.permit(:result_deflection_mm, :within_norm, :calculated_at, items: [:beam_id])
+      items = permitted[:items]
+      return render_error('items must be an array', :unprocessable_entity) if items.present? && !items.is_a?(Array)
+
+      within_norm = permitted[:within_norm]
+      calculated_at =
+        if permitted[:calculated_at].present?
+          Time.zone.parse(permitted[:calculated_at].to_s)
+        else
+          Time.current
+        end
+
+      BeamDeflection.transaction do
+        result_deflection_mm = permitted[:result_deflection_mm]
+
+        if result_deflection_mm.nil? || within_norm.nil?
+          computed = @beam_deflection.compute_result_values
+          result_deflection_mm ||= computed[:total_deflection_mm]
+          within_norm = computed[:within_norm] if within_norm.nil?
+        end
+
+        @beam_deflection.update!(
+          result_deflection_mm: result_deflection_mm,
+          within_norm: within_norm,
+          calculated_at: calculated_at
+        )
+      end
+
+      render json: { ok: true }
+    rescue => e
+      render_error(e.message, :unprocessable_entity)
     end
 
     # PUT /api/requests/:id/reject
@@ -138,7 +192,7 @@ module Api
       end
 
       @beam_deflection.update!(
-        status: BeamDeflectionScopes::STATUSES[:rejected],
+        status: BeamDeflection::STATUSES[:rejected],
         moderator: Current.user,
         completed_at: Time.current
       )
@@ -150,13 +204,25 @@ module Api
     # DELETE /api/requests/:id
     def destroy
       return render_error('Not authorized', :forbidden) unless @beam_deflection.creator == Current.user
-      @beam_deflection.update!(status: BeamDeflectionScopes::STATUSES[:deleted], completed_at: Time.current)
+      @beam_deflection.update!(status: BeamDeflection::STATUSES[:deleted], completed_at: Time.current)
       head :no_content
     rescue => e
       render_error(@beam_deflection.errors.full_messages.presence || e.message, :unprocessable_entity)
     end
 
     private
+
+    def require_async_callback_auth!
+      expected = ENV['ASYNC_CALLBACK_TOKEN'].to_s.strip
+      return if expected.blank?
+
+      actual = request.headers['X-Async-Token'].to_s.strip
+      if actual.bytesize == expected.bytesize && ActiveSupport::SecurityUtils.secure_compare(actual, expected)
+        return
+      end
+
+      render_error('Unauthorized', :unauthorized)
+    end
 
     def set_beam_deflection
       @beam_deflection = BeamDeflection.not_deleted.find(params[:id])
@@ -165,7 +231,7 @@ module Api
     end
 
     def beam_deflection_params
-      params.require(:beam_deflection).permit(:length_m, :udl_kn_m, :note)
+      params.require(:beam_deflection).permit(:note)
     end
 
     def check_owner
@@ -183,23 +249,28 @@ module Api
     def serialize_beam_deflection(bd)
       items = bd.beam_deflection_beams.includes(:beam).map do |bdb|
         beam = bdb.beam
+        computed_deflection = nil
+        if bd.result_deflection_mm.present? && beam && bdb.length_m.present? && bdb.udl_kn_m.present?
+          if bdb.length_m.to_f > 0 && bdb.udl_kn_m.to_f >= 0
+            computed_deflection = Calc::Deflection.call(bdb, beam).round(6)
+          end
+        end
         {
           beam_id: bdb.beam_id,
           beam_name: beam&.name,
           beam_material: beam&.material,
           beam_image_url: beam&.respond_to?(:image_url) ? beam&.image_url : beam&.try(:image_key),
           quantity: bdb.quantity,
+          length_m: bdb.length_m,
+          udl_kn_m: bdb.udl_kn_m,
           position: bdb.position,
-          deflection_mm: bdb.deflection_mm
+          deflection_mm: computed_deflection
         }
       end
 
       {
         id: bd.id,
         status: bd.status,
-        length_m: bd.length_m,
-        udl_kn_m: bd.udl_kn_m,
-        deflection_mm: bd.deflection_mm,
         within_norm: bd.within_norm,
         note: bd.note,
         formed_at: bd.formed_at,
@@ -209,6 +280,33 @@ module Api
         items: items,
         result_deflection_mm: bd.result_deflection_mm
       }
+    end
+
+    def parse_date_boundary(raw, boundary)
+      return nil if raw.blank?
+
+      value = raw.to_s
+      has_time = value.match?(/\d{2}:\d{2}/)
+      has_zone = value.match?(/Z$|[+-]\d{2}:\d{2}$/)
+
+      if has_time
+        parsed =
+          if has_zone
+            begin
+              Time.iso8601(value)
+            rescue ArgumentError
+              Time.parse(value)
+            end
+          else
+            Time.zone.parse(value)
+          end
+        return parsed&.utc
+      end
+
+      parsed = Time.zone.parse(value)
+      return nil unless parsed
+
+      (boundary == :start ? parsed.beginning_of_day : parsed.end_of_day).utc
     end
   end
 end

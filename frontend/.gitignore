@@ -9,8 +9,15 @@ lerna-debug.log*
 
 node_modules
 dist
+dist-tauri
 dist-ssr
 *.local
+
+# Local HTTPS certificates (mkcert)
+ca.crt
+ca.key
+cert.crt
+cert.key
 
 # Editor directories and files
 .vscode/*

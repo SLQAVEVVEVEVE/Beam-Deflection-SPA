@@ -27,8 +27,21 @@
 threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
 threads threads_count, threads_count
 
-# Specifies the `port` that Puma will listen on to receive requests; default is 3000.
-port ENV.fetch("PORT", 3000)
+port_number = Integer(ENV.fetch("PORT", 3000))
+
+if ENV["RAILS_SSL"] == "true"
+  ssl_cert_path = ENV.fetch("SSL_CERT_PATH")
+  ssl_key_path = ENV.fetch("SSL_KEY_PATH")
+
+  ssl_bind "0.0.0.0", port_number, {
+    cert: ssl_cert_path,
+    key: ssl_key_path,
+    verify_mode: "none",
+  }
+else
+  # Specifies the `port` that Puma will listen on to receive requests; default is 3000.
+  port port_number
+end
 
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart

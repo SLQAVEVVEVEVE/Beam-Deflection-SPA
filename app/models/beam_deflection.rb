@@ -1,166 +1,119 @@
 class BeamDeflection < ApplicationRecord
-  include BeamDeflectionScopes
-  
-  # Constants moved to BeamDeflectionScopes
-  STATUSES = BeamDeflectionScopes::STATUSES
-  
-  # Associations
-  belongs_to :creator, 
-             class_name: 'User', 
-             foreign_key: :creator_id, 
+  STATUSES = {
+    draft: 'draft',
+    formed: 'formed',
+    completed: 'completed',
+    rejected: 'rejected',
+    deleted: 'deleted',
+  }.freeze
+
+  belongs_to :creator,
+             class_name: 'User',
+             foreign_key: :creator_id,
              inverse_of: :beam_deflections
-             
-  belongs_to :moderator, 
-             class_name: 'User', 
-             foreign_key: :moderator_id, 
-             optional: true, 
+
+  belongs_to :moderator,
+             class_name: 'User',
+             foreign_key: :moderator_id,
+             optional: true,
              inverse_of: :moderated_beam_deflections
-  
+
   has_many :beam_deflection_beams, dependent: :destroy
   has_many :beams, through: :beam_deflection_beams
-  
-  # Validations
+
   validates :status, presence: true, inclusion: { in: STATUSES.values }
   validates :creator_id, presence: true
-  validates :length_m, :udl_kn_m, numericality: { greater_than: 0 }, allow_nil: true
-  
-  # Callbacks
+
+  validate :validate_single_draft_per_user, if: :draft?
+
+  scope :draft, -> { where(status: STATUSES[:draft]) }
+  scope :formed, -> { where(status: STATUSES[:formed]) }
+  scope :completed, -> { where(status: STATUSES[:completed]) }
+  scope :rejected, -> { where(status: STATUSES[:rejected]) }
+  scope :deleted, -> { where(status: STATUSES[:deleted]) }
+  scope :active, -> { where.not(status: STATUSES[:deleted]) }
+  scope :not_deleted, -> { where.not(status: STATUSES[:deleted]) }
+  scope :not_draft, -> { where.not(status: STATUSES[:draft]) }
+  scope :by_statuses, ->(statuses) { where(status: statuses) if statuses.present? }
+  scope :draft_for, ->(user) { where(creator: user, status: STATUSES[:draft]) }
+
   before_validation :set_default_status, on: :create
-  
-  # Status predicate methods are now in RequestScopes
-  
-  # Scopes are now in RequestScopes
-  
-  # Class methods
+  before_save :set_timestamps
+
+  def draft? = status == STATUSES[:draft]
+  def formed? = status == STATUSES[:formed]
+  def completed? = status == STATUSES[:completed]
+  def rejected? = status == STATUSES[:rejected]
+  def deleted? = status == STATUSES[:deleted]
+  public :draft?, :formed?, :completed?, :rejected?, :deleted?
+
   def self.ensure_draft_for(user)
     draft_for(user).first_or_create! do |request|
       request.creator = user
     end
   end
-  
-  # Instance methods
+
   def can_form_by?(user)
     creator == user && draft?
   end
-  
+
   def can_complete_by?(user)
     user.moderator? && formed?
   end
-  
+
   def can_reject_by?(user)
     user.moderator? && formed?
   end
-  
-  def compute_result!
-    total_deflection = 0.0
-    
-    beam_deflection_beams.each do |bdb|
-      bdb.deflection_mm = Calc::Deflection.call(self, bdb.beam)
-      bdb.save!
-      total_deflection += bdb.deflection_mm * bdb.quantity
+
+  def compute_result_values
+    total_deflection_mm = 0.0
+    within_norm = true
+
+    beam_deflection_beams.includes(:beam).find_each do |item|
+      item_deflection_mm = Calc::Deflection.call(item, item.beam)
+      total_deflection_mm += item_deflection_mm.to_f * item.quantity.to_i
+
+      ratio = item.beam&.allowed_deflection_ratio.to_f
+      max_allowed = ratio.positive? ? (item.length_m.to_f * 1000.0 / ratio) : Float::INFINITY
+      within_norm &&= item_deflection_mm.to_f <= max_allowed
     end
-    
-    update!(result_deflection_mm: total_deflection)
-    total_deflection
+
+    { total_deflection_mm: total_deflection_mm, within_norm: within_norm }
   end
-  
-  def calculated_items_count
-    result_deflection_mm.presence || beam_deflection_beams.where.not(deflection_mm: nil).count
+
+  def compute_result!
+    values = compute_result_values
+
+    update!(
+      result_deflection_mm: values[:total_deflection_mm],
+      within_norm: values[:within_norm],
+      calculated_at: Time.current
+    )
+
+    values
   end
-  
+
+  def compute_and_store_result_deflection!
+    compute_result!
+  end
+
   private
-  
+
   def set_default_status
     self.status ||= STATUSES[:draft]
   end
-  validates :length_m, numericality: { greater_than: 0 }, allow_nil: true
-  validates :udl_kn_m, numericality: { greater_than: 0 }, allow_nil: true
-  validates :deflection_mm,
-            numericality: { greater_than_or_equal_to: 0, allow_nil: true }
-  
-  # One draft per user
-  validate :validate_single_draft_per_user, if: :draft?
-  
-  scope :draft, -> { where(status: STATUSES[:draft]) }
-  scope :active, -> { where.not(status: [STATUSES[:deleted], STATUSES[:rejected]]) }
-  scope :completed, -> { where(status: STATUSES[:completed]) }
-  
-  before_save :set_timestamps
-  
-  def draft? = status == STATUSES[:draft]
-  def deleted? = status == STATUSES[:deleted]
-  def formed? = status == STATUSES[:formed]
-  def completed? = status == STATUSES[:completed]
-  def rejected? = status == STATUSES[:rejected]
-  public :draft?, :deleted?, :formed?, :completed?, :rejected?
-  
-  def mark_as_formed!(moderator: nil)
-    update!(
-      status: STATUSES[:formed],
-      moderator: moderator,
-      formed_at: Time.current
-    )
-  end
-  
-  # Calculate deflection for a single request service (in mm)
-  def self.deflection_mm_for(rs)
-    l = rs.length_m.to_f                  # m
-    q = rs.udl_kn_m.to_f * 1000.0         # kN/m -> N/m
-    e = rs.service.elasticity_gpa.to_f * 1e9      # ГПа -> Па
-    j = rs.service.inertia_cm4.to_f * 1e-8        # см^4 -> м^4
-    return 0.0 if l <= 0 || q <= 0 || e <= 0 || j <= 0
 
-    w_m = 5.0 * q * (l ** 4) / (384.0 * e * j)    # in meters
-    w_m * 1000.0                                   # -> mm
-  end
-
-  # Calculate and store deflections for all services in the request
-  def compute_and_store_result_deflection!
-    total = 0.0
-    beam_deflection_beams.find_each do |rs|
-      w_mm = self.class.deflection_mm_for(rs)
-      rs.update_column(:deflection_mm, w_mm) # update without validations
-      total += w_mm
-    end
-    update_columns(
-      result_deflection_mm: total,
-      calculated_at: Time.current
-    )
-  end
-
-  def complete!(deflection_mm: nil, within_norm: nil)
-    update!(
-      status: STATUSES[:completed],
-      completed_at: Time.current,
-      result_deflection_mm: deflection_mm,
-      within_norm: within_norm
-    )
-    compute_and_store_result_deflection! if deflection_mm.nil?
-  end
-  
-  def reject!(moderator:)
-    update!(
-      status: STATUSES[:rejected],
-      moderator: moderator
-    )
-  end
-  
-  def soft_delete!
-    update!(status: STATUSES[:deleted])
-  end
-  
-  private
-  
   def validate_single_draft_per_user
     return unless creator_id.present?
-    exists = self.class.where(creator_id: creator_id, status: STATUSES[:draft])
-    exists = exists.where.not(id: id) if persisted?
-    errors.add(:base, 'У пользователя уже есть черновик') if exists.exists?
+
+    scope = self.class.where(creator_id: creator_id, status: STATUSES[:draft])
+    scope = scope.where.not(id: id) if persisted?
+    errors.add(:base, 'У пользователя уже есть черновик') if scope.exists?
   end
-  
+
   def set_timestamps
-    return unless status_changed?
-    
+    return unless will_save_change_to_status?
+
     case status
     when STATUSES[:formed]
       self.formed_at ||= Time.current
@@ -169,3 +122,4 @@ class BeamDeflection < ApplicationRecord
     end
   end
 end
+

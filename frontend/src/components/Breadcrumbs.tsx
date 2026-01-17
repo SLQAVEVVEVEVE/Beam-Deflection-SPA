@@ -4,6 +4,10 @@ import { Link, useLocation } from 'react-router-dom'
 const LABELS: Record<string, string> = {
   '': 'Главная',
   beams: 'Балки',
+  deflections: 'Заявки',
+  login: 'Вход',
+  register: 'Регистрация',
+  profile: 'Профиль',
 }
 
 export function Breadcrumbs() {
@@ -15,7 +19,17 @@ export function Breadcrumbs() {
   segments.forEach((segment, index) => {
     const path = '/' + segments.slice(0, index + 1).join('/')
     const isId = /^\d+$/.test(segment)
-    const label = isId ? `Балка #${segment}` : LABELS[segment] || segment
+    let label = LABELS[segment] || segment
+    if (isId) {
+      const parent = segments[index - 1]
+      if (parent === 'beams') {
+        label = `Балка #${segment}`
+      } else if (parent === 'deflections') {
+        label = `Заявка #${segment}`
+      } else {
+        label = `#${segment}`
+      }
+    }
     crumbs.push({ path, label })
   })
 

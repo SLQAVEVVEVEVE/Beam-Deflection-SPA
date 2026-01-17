@@ -1,14 +1,30 @@
 services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - web
+      - frontend
+
   web:
     build: .
     ports:
       - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     environment:
       - DATABASE_HOST=db
       - REDIS_URL=redis://redis:6379/0
       - RAILS_ENV=development
+      - RAILS_SSL=true
+      - SSL_CERT_PATH=/etc/rails/certs/cert.crt
+      - SSL_KEY_PATH=/etc/rails/certs/cert.key
       - BUNDLE_PATH=/bundle
     depends_on:
       - db
@@ -16,8 +32,19 @@ services:
       - minio
     volumes:
       - .:/app
+      - ./nginx/certs:/etc/rails/certs:ro
       - bundle_cache:/bundle
-    command: bash -lc "rm -f tmp/pids/server.pid && bin/rails s -b 0.0.0.0 -p 3000"
+    command: bash -lc "rm -f tmp/pids/server.pid && bundle exec puma -C config/puma.rb"
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    environment:
+      - VITE_DEV_API_TARGET=https://web:3000
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command: sh -lc "npm install && npm run dev -- --host 0.0.0.0 --port 5173 --strictPort"
 
   db:
     image: postgres:15-alpine
@@ -60,3 +87,4 @@ volumes:
   postgres_data:
   redis_data:
   bundle_cache:
+  frontend_node_modules:

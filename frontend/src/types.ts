@@ -12,6 +12,45 @@ export interface Beam {
   updated_at?: string
 }
 
+export type User = {
+  id: number
+  email: string
+  moderator: boolean
+}
+
+export type BeamDeflectionStatus = 'draft' | 'formed' | 'completed' | 'rejected' | 'deleted'
+
+export type BeamDeflectionItem = {
+  beam_id: number
+  beam_name?: string
+  beam_material?: string
+  beam_image_url?: string | null
+  quantity: number
+  length_m?: number | null
+  udl_kn_m?: number | null
+  position?: number
+  deflection_mm?: number | null
+}
+
+export type BeamDeflection = {
+  id: number
+  status: BeamDeflectionStatus
+  note?: string | null
+  formed_at?: string | null
+  completed_at?: string | null
+  creator_login?: string | null
+  moderator_login?: string | null
+  result_deflection_mm?: number | null
+  within_norm?: boolean | null
+  items: BeamDeflectionItem[]
+}
+
+export type BeamDeflectionListItem = Omit<BeamDeflection, 'items'> & {
+  items_with_result_count?: number | null
+  item_deflections_mm?: number[] | null
+  items_count?: number | null
+}
+
 export interface BeamsResponse {
   beams: Beam[]
   meta?: {
