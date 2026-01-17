@@ -10,7 +10,6 @@ module Api
       attrs = params.require(:beam_deflection_beam).permit(:quantity, :position, :length_m, :udl_kn_m)
       if item.update(attrs)
         if attrs.key?(:length_m) || attrs.key?(:udl_kn_m)
-          item.update_column(:deflection_mm, nil)
           @beam_deflection.update_columns(result_deflection_mm: nil, within_norm: nil, calculated_at: nil)
         end
         render json: item

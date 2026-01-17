@@ -33,7 +33,8 @@ export function BeamCard({ beam, onAdd, addLoading, addDisabled }: Props) {
         <div className="beam-meta">
           <div>Материал: {materialLabel(beam.material)}</div>
           <div>
-            Норма: L/{beam.allowed_deflection_ratio ?? '-'} · E = {beam.elasticity_gpa} ГПа · I = {beam.inertia_cm4} см⁴
+            Параметры: L/{beam.allowed_deflection_ratio ?? '-'} · E = {beam.elasticity_gpa} ГПа · I = {beam.inertia_cm4}{' '}
+            см^4
           </div>
         </div>
         <div className="beam-actions">
@@ -42,7 +43,7 @@ export function BeamCard({ beam, onAdd, addLoading, addDisabled }: Props) {
             className="beam-btn"
             onClick={() => onAdd?.()}
             disabled={addDisabled || addLoading || !onAdd}
-            title={addDisabled ? 'Требуется авторизация' : 'Добавить в черновик'}
+            title={addDisabled ? 'Войдите, чтобы добавить' : 'Добавить'}
           >
             {addLoading ? <Spinner size="sm" animation="border" /> : 'Добавить'}
           </Button>

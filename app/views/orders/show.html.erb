@@ -75,11 +75,12 @@
             <div class="order-qty">× <%= item.quantity %></div>
           </div>
           
-          <% if item.deflection_mm.present? %>
+          <% deflection = @item_deflections[item.id] %>
+          <% if !deflection.nil? %>
             <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee;">
               <div style="font-size: 14px; color: #6b7280;">Прогиб по позиции:</div>
               <div style="font-weight: 500;">
-                <%= number_with_precision(item.deflection_mm, precision: 2) %> <span style="font-size: 14px; color: #6b7280;">мм</span>
+                <%= number_with_precision(deflection, precision: 2) %> <span style="font-size: 14px; color: #6b7280;">мм</span>
               </div>
             </div>
           <% end %>

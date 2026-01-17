@@ -8,7 +8,7 @@ const apiBaseFromEnv = (isTauri ? import.meta.env.VITE_TAURI_API_BASE : import.m
 const API_BASE = apiBaseFromEnv.replace(/\/$/, '')
 
 const DEFAULT_PLACEHOLDER =
-  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360" viewBox="0 0 600 360" preserveAspectRatio="xMidYMid meet"><rect width="600" height="360" fill="%23f4f6f8"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23808b96" font-family="Arial" font-size="20">No image</text></svg>'
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="360" viewBox="0 0 600 360" preserveAspectRatio="xMidYMid meet"><rect width="600" height="360" fill="%23f4f6f8"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23808b96" font-family="Arial" font-size="20">Нет изображения</text></svg>'
 
 const MINIO_PUBLIC = (import.meta.env.VITE_MINIO_PUBLIC || 'http://localhost:9000/beam-deflection/').replace(/\/?$/, '/')
 
@@ -99,7 +99,7 @@ export async function fetchBeams(filters: BeamFilters): Promise<BeamsResponse> {
 
   try {
     const response = await fetch(url)
-    if (!response.ok) throw new Error(`API error: ${response.status}`)
+    if (!response.ok) throw new Error(`?????? API: ${response.status}`)
     const data = await response.json()
     const beams = data.beams ?? data.data ?? []
     const totalCount = data.meta?.total_count ?? beams.length
@@ -114,7 +114,7 @@ export async function fetchBeams(filters: BeamFilters): Promise<BeamsResponse> {
       source: 'api',
     }
   } catch (error) {
-    console.warn('Falling back to mock data', error)
+    console.warn('??????? ?? ???????? ??????', error)
     return filterMock(filters)
   }
 }
@@ -122,13 +122,13 @@ export async function fetchBeams(filters: BeamFilters): Promise<BeamsResponse> {
 export async function fetchBeam(id: number): Promise<{ beam: Beam; source: 'api' | 'mock' }> {
   try {
     const response = await fetch(buildUrl(`beams/${id}`))
-    if (!response.ok) throw new Error(`API error: ${response.status}`)
+    if (!response.ok) throw new Error(`?????? API: ${response.status}`)
     const data = await response.json()
     return { beam: data.beam ?? data, source: 'api' }
   } catch (error) {
-    console.warn('Falling back to mock beam', error)
+    console.warn('??????? ?? ???????? ?????? ?????', error)
     const beam = mockBeams.find((b) => b.id === id)
-    if (!beam) throw new Error('Beam not found in mock data')
+    if (!beam) throw new Error('????? ?? ??????? ? ???????? ??????')
     return { beam, source: 'mock' }
   }
 }

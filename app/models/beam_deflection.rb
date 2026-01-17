@@ -23,7 +23,6 @@ class BeamDeflection < ApplicationRecord
 
   validates :status, presence: true, inclusion: { in: STATUSES.values }
   validates :creator_id, presence: true
-  validates :deflection_mm, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
 
   validate :validate_single_draft_per_user, if: :draft?
 
@@ -66,14 +65,12 @@ class BeamDeflection < ApplicationRecord
     user.moderator? && formed?
   end
 
-  def compute_result!
+  def compute_result_values
     total_deflection_mm = 0.0
     within_norm = true
 
     beam_deflection_beams.includes(:beam).find_each do |item|
       item_deflection_mm = Calc::Deflection.call(item, item.beam)
-      item.update!(deflection_mm: item_deflection_mm)
-
       total_deflection_mm += item_deflection_mm.to_f * item.quantity.to_i
 
       ratio = item.beam&.allowed_deflection_ratio.to_f
@@ -81,13 +78,19 @@ class BeamDeflection < ApplicationRecord
       within_norm &&= item_deflection_mm.to_f <= max_allowed
     end
 
+    { total_deflection_mm: total_deflection_mm, within_norm: within_norm }
+  end
+
+  def compute_result!
+    values = compute_result_values
+
     update!(
-      result_deflection_mm: total_deflection_mm,
-      within_norm: within_norm,
+      result_deflection_mm: values[:total_deflection_mm],
+      within_norm: values[:within_norm],
       calculated_at: Time.current
     )
 
-    { total_deflection_mm: total_deflection_mm, within_norm: within_norm }
+    values
   end
 
   def compute_and_store_result_deflection!

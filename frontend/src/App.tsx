@@ -14,7 +14,12 @@ import { RegisterPage } from './pages/RegisterPage'
 import { RequestPage } from './pages/RequestPage'
 import { RequestsListPage } from './pages/RequestsListPage'
 import { bootstrapAuthAsync, selectIsAuthenticated } from './store/authSlice'
-import { fetchDraftBadgeAsync, selectBadgeDraftId, selectBadgeItemsCount, selectHasUsableDraft } from './store/draftSlice'
+import {
+  fetchBeamDeflectionDraftBadgeAsync,
+  selectBadgeDraftId,
+  selectBadgeItemsCount,
+  selectHasUsableDraft,
+} from './store/draftSlice'
 import { useAppDispatch, useAppSelector } from './store/hooks'
 
 function AppShell() {
@@ -31,8 +36,7 @@ function AppShell() {
   }, [dispatch])
 
   useEffect(() => {
-    if (!isAuthed) return
-    dispatch(fetchDraftBadgeAsync())
+    dispatch(fetchBeamDeflectionDraftBadgeAsync())
   }, [dispatch, isAuthed])
 
   return (
@@ -48,16 +52,16 @@ function AppShell() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/requests" element={<RequestsListPage />} />
-          <Route path="/requests/:id" element={<RequestPage />} />
+          <Route path="/deflections" element={<RequestsListPage />} />
+          <Route path="/deflections/:id" element={<RequestPage />} />
           <Route path="*" element={<div>Страница не найдена</div>} />
         </Routes>
       </Container>
 
       <FloatingCart
-        to={draftId ? `/requests/${draftId}` : '/requests'}
+        to={draftId && draftId > 0 ? `/deflections/${draftId}` : '/deflections'}
         count={itemsCount}
-        disabled={!isAuthed || !hasUsableDraft || !draftId}
+        disabled={!isAuthed || !hasUsableDraft}
       />
     </div>
   )

@@ -75,6 +75,7 @@ export function HomePage() {
               </Carousel.Item>
             ))}
           </Carousel>
+
         </div>
       </section>
     </>

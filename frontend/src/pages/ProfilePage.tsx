@@ -36,7 +36,7 @@ export function ProfilePage() {
     await dispatch(updateMeAsync(payload)).unwrap()
     setPassword('')
     setPasswordConfirmation('')
-    setSuccess('Профиль обновлён')
+    setSuccess('Профиль обновлен')
   }
 
   return (
@@ -50,7 +50,7 @@ export function ProfilePage() {
 
           <Form onSubmit={onSubmit}>
             <Form.Group className="mb-3" controlId="me-email">
-              <Form.Label>Email</Form.Label>
+              <Form.Label>Эл. почта</Form.Label>
               <Form.Control type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </Form.Group>
 
@@ -80,7 +80,7 @@ export function ProfilePage() {
               {loading ? (
                 <>
                   <Spinner size="sm" animation="border" className="me-2" />
-                  Сохраняем…
+                  Сохраняем...
                 </>
               ) : (
                 'Сохранить'
