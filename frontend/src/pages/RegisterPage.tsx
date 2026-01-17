@@ -34,7 +34,7 @@ export function RegisterPage() {
 
           <Form onSubmit={onSubmit}>
             <Form.Group className="mb-3" controlId="register-email">
-              <Form.Label>Email</Form.Label>
+              <Form.Label>Эл. почта</Form.Label>
               <Form.Control
                 type="email"
                 value={email}
@@ -70,7 +70,7 @@ export function RegisterPage() {
               {loading ? (
                 <>
                   <Spinner size="sm" animation="border" className="me-2" />
-                  Создаём аккаунт…
+                  Регистрируем...
                 </>
               ) : (
                 'Зарегистрироваться'

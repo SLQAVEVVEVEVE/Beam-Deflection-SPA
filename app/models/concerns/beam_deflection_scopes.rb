@@ -52,17 +52,27 @@ module BeamDeflectionScopes
   
   def compute_result!
     total_deflection = 0.0
+    within_norm = true
     
-    beam_deflection_beams.each do |bdb|
-      bdb.deflection_mm = Calc::Deflection.call(self, bdb.beam)
-      bdb.save!
-      total_deflection += bdb.deflection_mm * bdb.quantity
+    beam_deflection_beams.includes(:beam).find_each do |bdb|
+      item_deflection = Calc::Deflection.call(bdb, bdb.beam)
+      total_deflection += item_deflection.to_f * bdb.quantity.to_i
+
+      ratio = bdb.beam&.allowed_deflection_ratio.to_f
+      max_allowed = ratio.positive? ? (bdb.length_m.to_f * 1000.0 / ratio) : Float::INFINITY
+      within_norm &&= item_deflection.to_f <= max_allowed
     end
     
+    update!(
+      result_deflection_mm: total_deflection,
+      within_norm: within_norm,
+      calculated_at: Time.current
+    )
+
     total_deflection
   end
   
   def calculated_items_count
-    result_deflection_mm.presence || beam_deflection_beams.where.not(deflection_mm: nil).count
+    result_deflection_mm.presence || beam_deflection_beams.count
   end
 end

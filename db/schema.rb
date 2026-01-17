@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_12_15_000100) do
+ActiveRecord::Schema[8.0].define(version: 2025_12_15_000200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -20,7 +20,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_15_000100) do
     t.bigint "moderator_id"
     t.datetime "formed_at"
     t.datetime "completed_at"
-    t.decimal "deflection_mm", precision: 10, scale: 3
     t.boolean "within_norm"
     t.text "note"
     t.datetime "created_at", null: false
@@ -41,11 +40,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_12_15_000100) do
     t.bigint "beam_id", null: false
     t.integer "quantity", default: 1, null: false
     t.integer "position", default: 1, null: false
-    t.boolean "primary", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "is_primary", default: false, null: false
-    t.decimal "deflection_mm", precision: 18, scale: 6
     t.decimal "length_m", precision: 8, scale: 3
     t.decimal "udl_kn_m", precision: 8, scale: 3
     t.index ["beam_deflection_id", "beam_id"], name: "idx_requests_services_unique", unique: true

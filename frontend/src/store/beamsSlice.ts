@@ -66,7 +66,7 @@ const beamsSlice = createSlice({
       })
       .addCase(fetchBeamsAsync.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload ?? 'Failed to load beams'
+        state.error = action.payload ?? '?? ??????? ????????? ?????'
         state.items = []
       })
 

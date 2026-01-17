@@ -35,7 +35,14 @@ const initialState: AuthState = {
 function extractErrorMessage(error: unknown): string {
   if (typeof error === 'string') return error
   if (error instanceof Error) return error.message
-  return 'Request failed'
+  return '?? ??????? ????????? ??????'
+}
+
+function extractHttpStatus(error: unknown): number | null {
+  if (typeof error !== 'object' || error === null) return null
+  const response = (error as { response?: unknown }).response as { status?: unknown } | undefined
+  const status = response?.status
+  return typeof status === 'number' ? status : null
 }
 
 export const bootstrapAuthAsync = createAsyncThunk<User | null, void, { rejectValue: string }>(
@@ -45,7 +52,6 @@ export const bootstrapAuthAsync = createAsyncThunk<User | null, void, { rejectVa
     if (!token) return null
 
     const existingUser = loadAuthUser()
-    if (existingUser) return normalizeUser(existingUser)
 
     try {
       const response = await api.api.meShow()
@@ -54,6 +60,16 @@ export const bootstrapAuthAsync = createAsyncThunk<User | null, void, { rejectVa
       saveAuthUser({ id: user.id, email: user.email, moderator: Boolean(user.moderator) })
       return { id: user.id, email: user.email, moderator: Boolean(user.moderator) }
     } catch (error) {
+      const status = extractHttpStatus(error)
+      if (status === 401 || status === 403) {
+        clearAuthToken()
+        clearAuthUser()
+        return rejectWithValue('????????? ???????????')
+      }
+
+      const fallback = normalizeUser(existingUser)
+      if (fallback) return fallback
+
       return rejectWithValue(extractErrorMessage(error))
     }
   },
@@ -69,7 +85,7 @@ export const loginUserAsync = createAsyncThunk<
     const token = response.data.token
     const user = response.data.user
 
-    if (!token || !user?.id || !user.email) return rejectWithValue('Invalid auth response')
+    if (!token || !user?.id || !user.email) return rejectWithValue('???????????? ????? ???????????')
 
     const normalizedUser: User = { id: user.id, email: user.email, moderator: Boolean(user.moderator) }
     saveAuthToken(token)
@@ -91,7 +107,7 @@ export const registerUserAsync = createAsyncThunk<
     const token = (response.data as { token?: string }).token
     const user = (response.data as { user?: { id?: number; email?: string; moderator?: boolean } }).user
 
-    if (!token || !user?.id || !user.email) return rejectWithValue('Invalid auth response')
+    if (!token || !user?.id || !user.email) return rejectWithValue('???????????? ????? ???????????')
 
     const normalizedUser: User = { id: user.id, email: user.email, moderator: Boolean(user.moderator) }
     saveAuthToken(token)
@@ -134,7 +150,7 @@ export const updateMeAsync = createAsyncThunk<
       password_confirmation: passwordConfirmation,
     })
     const user = response.data
-    if (!user?.id || !user.email) return rejectWithValue('Invalid profile response')
+    if (!user?.id || !user.email) return rejectWithValue('???????????? ????? ???????')
 
     const normalizedUser: User = { id: user.id, email: user.email, moderator: Boolean(user.moderator) }
     saveAuthUser(normalizedUser)
@@ -161,7 +177,7 @@ const authSlice = createSlice({
       })
       .addCase(bootstrapAuthAsync.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload ?? 'Failed to bootstrap auth'
+        state.error = action.payload ?? '?? ??????? ????????? ???????????'
         state.user = null
         state.token = null
       })
@@ -176,7 +192,7 @@ const authSlice = createSlice({
       })
       .addCase(loginUserAsync.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload ?? 'Login failed'
+        state.error = action.payload ?? '?? ??????? ?????'
       })
       .addCase(registerUserAsync.pending, (state) => {
         state.loading = true
@@ -189,7 +205,7 @@ const authSlice = createSlice({
       })
       .addCase(registerUserAsync.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload ?? 'Registration failed'
+        state.error = action.payload ?? '?? ??????? ??????????????????'
       })
       .addCase(logoutUserAsync.pending, (state) => {
         state.loading = true
@@ -202,7 +218,7 @@ const authSlice = createSlice({
       })
       .addCase(logoutUserAsync.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload ?? 'Logout failed'
+        state.error = action.payload ?? '?? ??????? ?????'
         state.token = null
         state.user = null
       })
@@ -216,7 +232,7 @@ const authSlice = createSlice({
       })
       .addCase(updateMeAsync.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload ?? 'Profile update failed'
+        state.error = action.payload ?? '?? ??????? ???????? ???????'
       })
   },
 })
@@ -228,4 +244,3 @@ export const selectAuthError = (state: { auth: AuthState }) => state.auth.error
 export const selectIsAuthenticated = (state: { auth: AuthState }) => Boolean(state.auth.token)
 
 export default authSlice.reducer
-

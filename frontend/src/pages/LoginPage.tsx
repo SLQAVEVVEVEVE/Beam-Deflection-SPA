@@ -33,7 +33,7 @@ export function LoginPage() {
 
           <Form onSubmit={onSubmit}>
             <Form.Group className="mb-3" controlId="login-email">
-              <Form.Label>Email</Form.Label>
+              <Form.Label>Эл. почта</Form.Label>
               <Form.Control
                 type="email"
                 value={email}
@@ -58,7 +58,7 @@ export function LoginPage() {
               {loading ? (
                 <>
                   <Spinner size="sm" animation="border" className="me-2" />
-                  Входим…
+                  Входим...
                 </>
               ) : (
                 'Войти'

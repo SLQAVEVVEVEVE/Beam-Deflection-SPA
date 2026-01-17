@@ -21,7 +21,7 @@ export function Navigation() {
     <Navbar expand="lg" className="top-nav shadow-sm">
       <Container className="d-flex align-items-center">
         <Navbar.Brand as={Link} to="/" className="d-flex align-items-center gap-2">
-          <img src={logo} alt="Строй и пой" className="brand-logo" />
+          <img src={logo} alt="Логотип сервиса" className="brand-logo" />
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="main-nav" />
         <Navbar.Collapse id="main-nav" className="justify-content-end">
@@ -35,7 +35,7 @@ export function Navigation() {
 
             {isAuthed ? (
               <>
-                <Nav.Link as={NavLink} to="/requests">
+                <Nav.Link as={NavLink} to="/deflections">
                   Заявки
                 </Nav.Link>
                 <Nav.Link as={NavLink} to="/profile">
@@ -44,7 +44,7 @@ export function Navigation() {
 
                 <span className="text-muted small">{user?.email}</span>
                 <Button variant="outline-danger" onClick={onLogout}>
-                  Выход
+                  Выйти
                 </Button>
               </>
             ) : (
@@ -63,3 +63,4 @@ export function Navigation() {
     </Navbar>
   )
 }
+

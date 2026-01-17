@@ -21,6 +21,7 @@ Rails.application.routes.draw do
         put :form
         put :complete
         put :reject
+        post :async_result
       end
 
       # m-m operations by beam_id (without PK m-m)

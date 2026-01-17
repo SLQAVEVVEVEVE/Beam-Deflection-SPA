@@ -47,6 +47,8 @@ export type BeamDeflection = {
 
 export type BeamDeflectionListItem = Omit<BeamDeflection, 'items'> & {
   items_with_result_count?: number | null
+  item_deflections_mm?: number[] | null
+  items_count?: number | null
 }
 
 export interface BeamsResponse {

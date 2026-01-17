@@ -20,7 +20,7 @@ if (shouldRegisterSW) {
   try {
     registerSW({ immediate: true })
   } catch (error) {
-    console.warn('PWA service worker registration failed', error)
+    console.warn('Не удалось зарегистрировать service worker PWA', error)
   }
 } else if ('serviceWorker' in navigator) {
   navigator.serviceWorker

@@ -25,7 +25,7 @@ const initialState: DraftState = {
 function extractErrorMessage(error: unknown): string {
   if (typeof error === 'string') return error
   if (error instanceof Error) return error.message
-  return 'Request failed'
+  return '?? ??????? ????????? ??????'
 }
 
 const normalizeStatus = (value?: string): BeamDeflectionStatus => {
@@ -41,17 +41,30 @@ const normalizeStatus = (value?: string): BeamDeflectionStatus => {
   }
 }
 
-const normalizeItem = (raw: Partial<BeamDeflectionItem>): BeamDeflectionItem => ({
-  beam_id: raw.beam_id ?? 0,
-  beam_name: raw.beam_name,
-  beam_material: raw.beam_material,
-  beam_image_url: raw.beam_image_url ?? null,
-  quantity: raw.quantity ?? 1,
-  length_m: raw.length_m ?? null,
-  udl_kn_m: raw.udl_kn_m ?? null,
-  position: raw.position,
-  deflection_mm: raw.deflection_mm ?? null,
-})
+function toNumberOrNull(value: unknown): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const normalizeItem = (raw: Partial<BeamDeflectionItem>): BeamDeflectionItem => {
+  const beamId = toNumberOrNull(raw.beam_id)
+  const quantity = toNumberOrNull(raw.quantity)
+  return {
+    beam_id: beamId ?? 0,
+    beam_name: raw.beam_name,
+    beam_material: raw.beam_material,
+    beam_image_url: raw.beam_image_url ?? null,
+    quantity: quantity != null && quantity > 0 ? Math.round(quantity) : 1,
+    length_m: toNumberOrNull(raw.length_m),
+    udl_kn_m: toNumberOrNull(raw.udl_kn_m),
+    position: raw.position,
+    deflection_mm: toNumberOrNull(raw.deflection_mm),
+  }
+}
 
 type DraftApiItem = Partial<BeamDeflectionItem>
 
@@ -69,35 +82,36 @@ type DraftApiResponse = {
 }
 
 const normalizeDraft = (raw: DraftApiResponse | null | undefined): BeamDeflection => ({
-  id: Number(raw?.id ?? 0),
+  id: toNumberOrNull(raw?.id) ?? 0,
   status: normalizeStatus(raw?.status),
   note: raw?.note ?? null,
   formed_at: raw?.formed_at ?? null,
   completed_at: raw?.completed_at ?? null,
   creator_login: raw?.creator_login ?? null,
   moderator_login: raw?.moderator_login ?? null,
-  result_deflection_mm: raw?.result_deflection_mm ?? null,
+  result_deflection_mm: toNumberOrNull(raw?.result_deflection_mm),
   within_norm: raw?.within_norm ?? null,
   items: Array.isArray(raw?.items) ? raw.items.map((item) => normalizeItem(item)) : [],
 })
 
-export const fetchDraftBadgeAsync = createAsyncThunk<
-  { draftId: number; itemsCount: number },
+export const fetchBeamDeflectionDraftBadgeAsync = createAsyncThunk<
+  { draftId: number | null; itemsCount: number },
   void,
   { rejectValue: string }
 >('draft/fetchBadge', async (_, { rejectWithValue }) => {
   try {
     const response = await api.api.beamDeflectionsCartBadge()
-    const draftId = response.data.beam_deflection_id
+    const rawDraftId = response.data.beam_deflection_id
     const itemsCount = response.data.items_count
-    if (typeof draftId !== 'number') return rejectWithValue('Invalid badge response')
+    const draftId =
+      typeof rawDraftId === 'number' && Number.isFinite(rawDraftId) && rawDraftId > 0 ? rawDraftId : null
     return { draftId, itemsCount: typeof itemsCount === 'number' ? itemsCount : 0 }
   } catch (error) {
     return rejectWithValue(extractErrorMessage(error))
   }
 })
 
-export const addBeamToDraftAsync = createAsyncThunk<
+export const addBeamToBeamDeflectionDraftAsync = createAsyncThunk<
   { draftId: number; itemsCount: number },
   { beamId: number; quantity?: number },
   { rejectValue: string }
@@ -106,18 +120,18 @@ export const addBeamToDraftAsync = createAsyncThunk<
     const response = await api.api.beamsAddToDraft(beamId, quantity ? { quantity } : undefined)
     const draftId = response.data.beam_deflection_id
     const itemsCount = response.data.items_count
-    if (typeof draftId !== 'number') return rejectWithValue('Invalid draft response')
+    if (typeof draftId !== 'number') return rejectWithValue('???????????? ????? ?? ?????????')
     return { draftId, itemsCount: typeof itemsCount === 'number' ? itemsCount : 0 }
   } catch (error) {
     return rejectWithValue(extractErrorMessage(error))
   }
 })
 
-export const loadDraftAsync = createAsyncThunk<BeamDeflection, number, { rejectValue: string }>(
+export const loadBeamDeflectionDraftAsync = createAsyncThunk<BeamDeflection, number, { rejectValue: string }>(
   'draft/loadDraft',
-  async (draftId, { rejectWithValue }) => {
+  async (draftId, { rejectWithValue, signal }) => {
     try {
-      const response = await api.api.beamDeflectionsShow(draftId)
+      const response = await api.api.beamDeflectionsShow(draftId, { signal })
       return normalizeDraft(response.data)
     } catch (error) {
       return rejectWithValue(extractErrorMessage(error))
@@ -125,7 +139,19 @@ export const loadDraftAsync = createAsyncThunk<BeamDeflection, number, { rejectV
   },
 )
 
-export const updateDraftFieldsAsync = createAsyncThunk<
+export const pollBeamDeflectionDraftAsync = createAsyncThunk<BeamDeflection, number, { rejectValue: string }>(
+  'draft/pollDraft',
+  async (draftId, { rejectWithValue, signal }) => {
+    try {
+      const response = await api.api.beamDeflectionsShow(draftId, { signal })
+      return normalizeDraft(response.data)
+    } catch (error) {
+      return rejectWithValue(extractErrorMessage(error))
+    }
+  },
+)
+
+export const updateBeamDeflectionDraftFieldsAsync = createAsyncThunk<
   BeamDeflection,
   { id: number; note?: string },
   { rejectValue: string }
@@ -142,7 +168,7 @@ export const updateDraftFieldsAsync = createAsyncThunk<
   }
 })
 
-export const updateDraftItemAsync = createAsyncThunk<
+export const updateBeamDeflectionDraftItemAsync = createAsyncThunk<
   void,
   { draftId: number; beamId: number; quantity?: number; length_m?: number | null; udl_kn_m?: number | null },
   { rejectValue: string }
@@ -162,7 +188,11 @@ export const updateDraftItemAsync = createAsyncThunk<
   }
 })
 
-export const removeDraftItemAsync = createAsyncThunk<void, { draftId: number; beamId: number }, { rejectValue: string }>(
+export const removeBeamDeflectionDraftItemAsync = createAsyncThunk<
+  void,
+  { draftId: number; beamId: number },
+  { rejectValue: string }
+>(
   'draft/removeItem',
   async ({ draftId, beamId }, { rejectWithValue }) => {
     try {
@@ -173,7 +203,18 @@ export const removeDraftItemAsync = createAsyncThunk<void, { draftId: number; be
   },
 )
 
-export const formDraftAsync = createAsyncThunk<BeamDeflection, number, { rejectValue: string }>(
+export const deleteBeamDeflectionDraftAsync = createAsyncThunk<void, number, { rejectValue: string }>(
+  'draft/delete',
+  async (draftId, { rejectWithValue }) => {
+    try {
+      await api.api.beamDeflectionsDelete(draftId)
+    } catch (error) {
+      return rejectWithValue(extractErrorMessage(error))
+    }
+  },
+)
+
+export const formBeamDeflectionDraftAsync = createAsyncThunk<BeamDeflection, number, { rejectValue: string }>(
   'draft/form',
   async (draftId, { rejectWithValue }) => {
     try {
@@ -196,86 +237,113 @@ const draftSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchDraftBadgeAsync.pending, (state) => {
+      .addCase(fetchBeamDeflectionDraftBadgeAsync.pending, (state) => {
         state.loading = true
         state.error = null
       })
-      .addCase(fetchDraftBadgeAsync.fulfilled, (state, action) => {
+      .addCase(fetchBeamDeflectionDraftBadgeAsync.fulfilled, (state, action) => {
         state.loading = false
         state.badgeDraftId = action.payload.draftId
         state.badgeItemsCount = action.payload.itemsCount
       })
-      .addCase(fetchDraftBadgeAsync.rejected, (state, action) => {
+      .addCase(fetchBeamDeflectionDraftBadgeAsync.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload ?? 'Failed to load badge'
+        state.error = action.payload ?? '?? ??????? ????????? ????? ???????'
         state.badgeDraftId = null
         state.badgeItemsCount = 0
         state.current = null
       })
-      .addCase(addBeamToDraftAsync.pending, (state, action) => {
+      .addCase(addBeamToBeamDeflectionDraftAsync.pending, (state, action) => {
         state.error = null
         state.addingBeamIds.push(action.meta.arg.beamId)
       })
-      .addCase(addBeamToDraftAsync.fulfilled, (state, action) => {
+      .addCase(addBeamToBeamDeflectionDraftAsync.fulfilled, (state, action) => {
         state.addingBeamIds = state.addingBeamIds.filter((id) => id !== action.meta.arg.beamId)
         state.badgeDraftId = action.payload.draftId
         state.badgeItemsCount = action.payload.itemsCount
       })
-      .addCase(addBeamToDraftAsync.rejected, (state, action) => {
+      .addCase(addBeamToBeamDeflectionDraftAsync.rejected, (state, action) => {
         state.addingBeamIds = state.addingBeamIds.filter((id) => id !== action.meta.arg.beamId)
-        state.error = action.payload ?? 'Failed to add beam'
+        state.error = action.payload ?? '?? ??????? ???????? ?????'
       })
-      .addCase(loadDraftAsync.pending, (state) => {
+      .addCase(loadBeamDeflectionDraftAsync.pending, (state) => {
         state.loading = true
         state.error = null
       })
-      .addCase(loadDraftAsync.fulfilled, (state, action) => {
+      .addCase(loadBeamDeflectionDraftAsync.fulfilled, (state, action) => {
         state.loading = false
         state.current = action.payload
       })
-      .addCase(loadDraftAsync.rejected, (state, action) => {
+      .addCase(loadBeamDeflectionDraftAsync.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload ?? 'Failed to load draft'
+        state.error = action.payload ?? '?? ??????? ????????? ??????'
       })
-      .addCase(updateDraftFieldsAsync.pending, (state) => {
+      .addCase(pollBeamDeflectionDraftAsync.fulfilled, (state, action) => {
+        state.current = action.payload
+      })
+      .addCase(pollBeamDeflectionDraftAsync.rejected, (state, action) => {
+        if (action.meta.aborted) return
+        if (!state.current) {
+          state.error = action.payload ?? '?? ??????? ????????? ??????'
+        }
+      })
+      .addCase(updateBeamDeflectionDraftFieldsAsync.pending, (state) => {
         state.loading = true
         state.error = null
       })
-      .addCase(updateDraftFieldsAsync.fulfilled, (state, action) => {
+      .addCase(updateBeamDeflectionDraftFieldsAsync.fulfilled, (state, action) => {
         state.loading = false
         state.current = action.payload
       })
-      .addCase(updateDraftFieldsAsync.rejected, (state, action) => {
+      .addCase(updateBeamDeflectionDraftFieldsAsync.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload ?? 'Failed to update draft'
+        state.error = action.payload ?? '?? ??????? ???????? ??????'
       })
-      .addCase(updateDraftItemAsync.pending, (state, action) => {
+      .addCase(updateBeamDeflectionDraftItemAsync.pending, (state, action) => {
         state.error = null
         state.updatingItemIds.push(action.meta.arg.beamId)
       })
-      .addCase(updateDraftItemAsync.fulfilled, (state, action) => {
+      .addCase(updateBeamDeflectionDraftItemAsync.fulfilled, (state, action) => {
         state.updatingItemIds = state.updatingItemIds.filter((id) => id !== action.meta.arg.beamId)
       })
-      .addCase(updateDraftItemAsync.rejected, (state, action) => {
+      .addCase(updateBeamDeflectionDraftItemAsync.rejected, (state, action) => {
         state.updatingItemIds = state.updatingItemIds.filter((id) => id !== action.meta.arg.beamId)
-        state.error = action.payload ?? 'Failed to update item'
+        state.error = action.payload ?? '?? ??????? ???????? ???????'
       })
-      .addCase(removeDraftItemAsync.pending, (state, action) => {
+      .addCase(removeBeamDeflectionDraftItemAsync.pending, (state, action) => {
         state.error = null
         state.updatingItemIds.push(action.meta.arg.beamId)
       })
-      .addCase(removeDraftItemAsync.fulfilled, (state, action) => {
+      .addCase(removeBeamDeflectionDraftItemAsync.fulfilled, (state, action) => {
         state.updatingItemIds = state.updatingItemIds.filter((id) => id !== action.meta.arg.beamId)
       })
-      .addCase(removeDraftItemAsync.rejected, (state, action) => {
+      .addCase(removeBeamDeflectionDraftItemAsync.rejected, (state, action) => {
         state.updatingItemIds = state.updatingItemIds.filter((id) => id !== action.meta.arg.beamId)
-        state.error = action.payload ?? 'Failed to remove item'
+        state.error = action.payload ?? '?? ??????? ??????? ???????'
       })
-      .addCase(formDraftAsync.pending, (state) => {
+      .addCase(deleteBeamDeflectionDraftAsync.pending, (state) => {
         state.loading = true
         state.error = null
       })
-      .addCase(formDraftAsync.fulfilled, (state, action) => {
+      .addCase(deleteBeamDeflectionDraftAsync.fulfilled, (state, action) => {
+        state.loading = false
+        if (state.current?.id === action.meta.arg) {
+          state.current = null
+        }
+        if (state.badgeDraftId === action.meta.arg) {
+          state.badgeDraftId = null
+          state.badgeItemsCount = 0
+        }
+      })
+      .addCase(deleteBeamDeflectionDraftAsync.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload ?? '?? ??????? ??????? ??????'
+      })
+      .addCase(formBeamDeflectionDraftAsync.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(formBeamDeflectionDraftAsync.fulfilled, (state, action) => {
         state.loading = false
         state.current = action.payload
         if (state.badgeDraftId === action.payload.id) {
@@ -283,9 +351,9 @@ const draftSlice = createSlice({
           state.badgeItemsCount = 0
         }
       })
-      .addCase(formDraftAsync.rejected, (state, action) => {
+      .addCase(formBeamDeflectionDraftAsync.rejected, (state, action) => {
         state.loading = false
-        state.error = action.payload ?? 'Failed to form draft'
+        state.error = action.payload ?? '?? ??????? ???????????? ??????'
       })
 
     builder.addMatcher(
@@ -310,6 +378,8 @@ export const selectIsItemUpdating = (beamId: number) => (state: { draft: DraftSt
   state.draft.updatingItemIds.includes(beamId)
 
 export const selectHasUsableDraft = (state: { draft: DraftState }) =>
-  Boolean(state.draft.badgeDraftId) && state.draft.badgeItemsCount > 0
+  typeof state.draft.badgeDraftId === 'number' &&
+  state.draft.badgeDraftId > 0 &&
+  state.draft.badgeItemsCount > 0
 
 export default draftSlice.reducer

@@ -77,19 +77,19 @@ export function FiltersBar({ filters, onChange, onSubmit, disabled, onReset }: P
           </Form.Select>
         </Col>
         <Col md={4}>
-          <Form.Label className="filters-label">Норма L/ от</Form.Label>
+          <Form.Label className="filters-label">Соотношение L/прогиб (от)</Form.Label>
           <Form.Control
             type="number"
-            placeholder="например, 260"
+            placeholder="Например, 260"
             value={local.ratioMin ?? ''}
             onChange={handleNumber('ratioMin')}
           />
         </Col>
         <Col md={4}>
-          <Form.Label className="filters-label">Норма L/ до</Form.Label>
+          <Form.Label className="filters-label">Соотношение L/прогиб (до)</Form.Label>
           <Form.Control
             type="number"
-            placeholder="например, 320"
+            placeholder="Например, 320"
             value={local.ratioMax ?? ''}
             onChange={handleNumber('ratioMax')}
           />
