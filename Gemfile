@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 8.0.3"
+gem "rails", "~> 8.1.1"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use the Puma web server [https://github.com/puma/puma]
@@ -17,7 +17,7 @@ gem "rswag-ui"
 gem "rswag-specs"
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 gem "bcrypt", "~> 3.1.7"
-gem 'activerecord', '~> 8.0.3'
+gem 'activerecord', '~> 8.1.1'
 
 # Use PostgreSQL as the database
 # The default database adapter in the Gemfile is sqlite3 for development and test
